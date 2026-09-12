@@ -35,3 +35,23 @@ python src/query.py all
 - `src/main.py` — Scraper entry point
 - `src/query.py` — Database query tool
 - `data/quotes.db` — SQLite database (created at runtime)
+
+## Favorites
+
+Manage your favorite quotes:
+```bash
+# Show all favorites
+python src/favorites.py show
+
+# Search within favorites
+python src/favorites.py search love
+
+# Add quote to favorites (use ID from query results)
+python src/favorites.py add 5
+
+# Remove from favorites
+python src/favorites.py remove 5
+
+# Count favorites
+python src/favorites.py count
+```

@@ -36,6 +36,16 @@ class QuoteDatabase:
                 scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        # Favorites table - link to quotes"
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS favorites (
+                id INTEGER PRIMARY KEY,
+                quote_id INTEGER NOT NULL,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
+            )
+        ''')
+
         self.conn.commit()
     
     def insert_quotes(self, quotes):
@@ -100,3 +110,102 @@ class QuoteDatabase:
         if self.conn:
             self.conn.close()
             print("Database connection closed")
+
+    def add_favorite(self, quote_id):
+        """ 
+        Add a quote to favorites.
+        
+        Args:
+            quote_id (int): ID of the quote to add to favorites
+        
+        Returns:
+            bool: True if added, False if already exists
+        """
+        try:
+            self.cursor.execute('''
+                INSERT INTO favorites (quote_id) VALUES (?)
+            ''', (quote_id,))
+            self.conn.commit()
+            return True
+        except sqlite3.IntegrityError:
+            # Quote already in favorites
+            return False
+
+    def remove_favorite(self, quote_id):
+        """ 
+        Remove a quote from favorites.
+        
+        Args:
+            quote_id (int): ID of the quote to remove from favorites
+        
+        Returns:
+            bool: True if removed, False if not found
+        """
+        self.cursor.execute('''
+            DELETE FROM favorites WHERE quote_id = ?
+        ''', (quote_id,))
+
+        deleted = self.conn.total_changes > 0
+        self.conn.commit()
+        return deleted
+
+    def get_all_favorites(self):
+        """
+        Get all favorite quotes.
+
+        Returns:
+            list: List of favorite quotes with their details
+        """
+        self.cursor.execute('''
+            SELECT q.id, q.text, q.author, q.tags
+            FROM quotes q
+            INNER JOIN favorites f ON q.id = f.quote_id
+            ORDER BY f.added_at DESC
+        ''')
+        return self.cursor.fetchall()
+
+    def search_favorites(self, keyword):
+        """
+        Search favorite quotes by text.
+
+        Args:
+            keyword (str): Keyword to search in favorite quotes
+
+        Returns:
+            list: List of matching favorite quotes
+        """
+        self.cursor.execute('''
+            SELECT q.id, q.text, q.author, q.tags
+            FROM quotes q
+            INNER JOIN favorites f ON q.id = f.quote_id
+            WHERE q.text LIKE ?
+            ORDER BY f.added_at DESC
+        ''', (f'%{keyword}%',))
+        return self.cursor.fetchall()
+
+    def is_favorited(self, quote_id):
+        """
+        Check if a quote is in favorites.
+
+        Args:
+            quote_id (int): ID of the quote to check
+        
+        Returns:
+            bool: True if favorited
+        """
+        self.cursor.execute('''
+            SELECT 1 FROM favorites WHERE quote_id = ?
+        ''', (quote_id,))
+        return self.cursor.fetchone() is not None
+
+    def get_favorite_count(self):
+        """
+        Get total number of favorite quotes.
+
+        Returns:
+            int: Count of favorite quotes
+        """
+        self.cursor.execute('SELECT COUNT(*) FROM favorites')
+        return self.cursor.fetchone()[0]
+
+    
